@@ -1,0 +1,47 @@
+import pandas as pd
+import os
+import re
+from csv_info import CSVInfo
+
+
+def list_files(folder_path):
+    file_paths = []
+    for root, dirs, files in os.walk(folder_path):
+        for file_ in files:
+            relative_path = os.path.relpath(os.path.join(str(root), str(file_)), folder_path)
+            file_paths.append(relative_path)
+    return file_paths
+
+
+if __name__ == "__main__":
+    directions = r"./csv1"
+    paths = list_files(directions)
+    df_list = []
+
+    # 读取所有CSV文件
+    for file_path in paths:
+        # 使用os.path.join处理路径兼容性
+        full_path = os.path.join(directions, file_path)
+        temp_df = pd.read_csv(full_path)
+        df_list.append(temp_df)
+
+    # 合并所有DataFrame
+    combined_df = pd.concat(df_list, ignore_index=True)
+
+    # 处理空值：将NaN替换为空字符串
+    combined_df.replace(
+        to_replace=['null', '[\'null\']', 'nan', 'NaN'],  # 可扩展其他需要替换的无效值
+        value='',
+        inplace=True,
+        regex=False  # 精确匹配，防止误替换包含子字符串的值
+    )
+    chinese_pattern = re.compile(r'[\u4e00-\u9fff]')
+    combined_df = combined_df.applymap(lambda x: '' if isinstance(x, str) and re.search(chinese_pattern, x) else x)
+
+    combined_df.to_csv("combined_df2.csv", index=False, encoding="utf-8")
+    information_path = r"column_statistics2.xlsx"
+    # 定义要分析的列
+    columns = ['Introduction', 'Methodology', 'Conclusion', 'Others']
+    dataframe = pd.read_csv(r"combined_df2.csv")
+    information = CSVInfo(columns=columns, dataframe=dataframe, path=information_path)
+    information.save_result()
