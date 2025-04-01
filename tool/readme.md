@@ -1,1 +1,1 @@
-The tools of the objetc
+The tools of the object
